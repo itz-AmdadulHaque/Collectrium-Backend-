@@ -38,7 +38,7 @@ const generateAccessAndRefereshTokens = async (user) => {
         refreshToken,
       },
     });
-    
+
     if (!saveUser) {
       throw new ApiError(500, "Failed to store refresh token");
     }
@@ -155,7 +155,7 @@ const userLogin = asyncHandler(async (req, res) => {
 });
 
 const userLogout = asyncHandler(async (req, res) => {
-    console.log(req.user)
+  console.log(req.user);
   const saveUser = await prisma.user.update({
     where: {
       id: req?.user?.id,
@@ -164,7 +164,7 @@ const userLogout = asyncHandler(async (req, res) => {
       refreshToken: null,
     },
   });
-  
+
   if (!saveUser) {
     throw new ApiError(500, "Failed to logout");
   }
@@ -181,6 +181,96 @@ const userLogout = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "User logged Out"));
 });
 
+// loged in user info
+const getUser = asyncHandler(async (req, res) => {
+
+  const user = await prisma.user.findUnique({
+    where: { id: req?.user?.id },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      createdAt: true,
+    },
+  });
+
+  if (!user) {
+    throw new ApiError(501, "Something went wrong while geting user info");
+  }
+
+  res.status(201).json(new ApiResponse(201, { user }, "user Info"));
+});
+
+// refresh token rotation and access token generator
+const refreshTokenRotation = asyncHandler(async (req, res) => {
+  const oldRefreshToken = req.cookies?.refreshToken;
+
+  if (!oldRefreshToken) {
+    throw new ApiError(401, "No Refresh Token");
+  }
+
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: process.env.DEV_MODE !== "development",
+    sameSite: "None", // None for cross-site requests
+  });
+
+  //verify the token
+  const decodedUser = jwt.verify(
+    oldRefreshToken,
+    process.env.REFRESH_TOKEN_SECRET,
+    (err, userDecoded) => {
+      if (err) {
+        // console.log("auth error//////////\n", err?.message);
+        if (err?.message === "jwt expired") {
+          throw new ApiError(401, "Expired RefreshToken token");
+        }
+        throw new ApiError(401, "Forbidden - Invalid token");
+      } else {
+        return userDecoded;
+      }
+    }
+  );
+
+  const user = await prisma.user.findUnique({
+    where: {
+      id: decodedUser.id,
+    },
+  });
+  // console.log(user)
+  if (!user) {
+    throw new ApiError(401, "User does not exist");
+  }
+  // console.log(oldRefreshToken !== user?.refreshToken);
+
+  if (oldRefreshToken !== user?.refreshToken) {
+    throw new ApiError(401, "Attempt to hack using old refresh token");
+  }
+
+  // save refresh token to db and return access and refresh token
+  const { accessToken, refreshToken } = await generateAccessAndRefereshTokens(
+    user
+  );
+
+  const options = {
+    httpOnly: true,
+    secure: process.env.DEV_MODE !== "development",
+    sameSite: "None", // None for cross-site requests
+    maxAge: 24 * 60 * 60 * 1000, // only in milisecond format
+  };
+
+  return res.status(200).cookie("refreshToken", refreshToken, options).json(
+    new ApiResponse(
+      200,
+      {
+        accessToken,
+      },
+      "Access token created from refresh token"
+    )
+  );
+});
+
 // const allUser = asyncHandler(async (req, res) => {
 //   const [users] = await db.query(
 //     "SELECT id, name, email, block, updatedAt FROM users"
@@ -193,19 +283,7 @@ const userLogout = asyncHandler(async (req, res) => {
 //   res.json(new ApiResponse(200, users, "All users"));
 // });
 
-// // loged in user info
-// const getUser = asyncHandler(async (req, res) => {
-//   const [user] = await db.query(
-//     "SELECT id, name, email, block, updatedAt FROM users WHERE id = ?",
-//     [req?.user?.id]
-//   );
 
-//   if (user.length === 0) {
-//     throw new ApiError(501, "Something went wrong while geting user info");
-//   }
-
-//   res.status(201).json(new ApiResponse(201, { user: user[0] }, "user Info"));
-// });
 
 // const deleteUsers = asyncHandler(async (req, res) => {
 //   const { userIds } = req.body;
@@ -260,73 +338,4 @@ const userLogout = asyncHandler(async (req, res) => {
 //     );
 // });
 
-// // refresh token rotation and access token generator
-// const refreshTokenRotation = asyncHandler(async (req, res) => {
-//   const oldRefreshToken = req.cookies?.refreshToken;
-
-//   if (!oldRefreshToken) {
-//     throw new ApiError(401, "No Refresh Token");
-//   }
-
-//   res.clearCookie("refreshToken", {
-//     httpOnly: true,
-//     secure: process.env.DEV_MODE !== "development",
-//     sameSite: "None", // None for cross-site requests
-//   });
-
-//   //verify the token
-//   const decodedUser = jwt.verify(
-//     oldRefreshToken,
-//     process.env.REFRESH_TOKEN_SECRET,
-//     (err, userDecoded) => {
-//       if (err) {
-//         // console.log("auth error//////////\n", err?.message);
-//         if (err?.message === "jwt expired") {
-//           throw new ApiError(403, "Expired RefreshToken token");
-//         }
-//         throw new ApiError(403, "Forbidden - Invalid token");
-//       } else {
-//         return userDecoded;
-//       }
-//     }
-//   );
-
-//   const [user] = await db.query("SELECT * FROM users WHERE id=?", [
-//     decodedUser.id,
-//   ]);
-//   // console.log(user)
-//   if (user.length === 0) {
-//     throw new ApiError(401, "User does not exist");
-//   }
-//   // console.log(oldRefreshToken !== user?.refreshToken);
-
-//   if (oldRefreshToken !== user[0]?.refreshToken) {
-//     throw new ApiError(403, "Attempt to hack using old refresh token");
-//   }
-
-//   // save refresh token to db and return access and refresh token
-//   const { accessToken, refreshToken } = await generateAccessAndRefereshTokens(
-//     user[0]
-//   );
-
-//   const options = {
-//     httpOnly: true,
-//     secure: process.env.DEV_MODE !== "development",
-//     sameSite: "None", // None for cross-site requests
-//     maxAge: 24 * 60 * 60 * 1000, // only in milisecond format
-//   };
-
-//   return res.status(200).cookie("refreshToken", refreshToken, options).json(
-//     new ApiResponse(
-//       200,
-//       {
-//         accessToken,
-//       },
-//       "Access token created from refresh token"
-//     )
-//   );
-// });
-
-export { userRegister, userLogin, userLogout };
-
-
+export { userRegister, userLogin, userLogout, refreshTokenRotation, getUser };

@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import cookieParser from "cookie-parser";
 import cors from "cors";
 import { corsOptions } from "./config/corsOptions.js";
 import morgan from "morgan";
@@ -12,9 +13,8 @@ const app = express();
 // middleware
 app.use(cors(corsOptions));
 app.use(express.json());
-
+app.use(cookieParser());
 app.use(morgan("dev")); // for request logs output
-
 app.use(passport.initialize()); // Initialize passport middleware
 
 app.get("/", async (req, res) => {

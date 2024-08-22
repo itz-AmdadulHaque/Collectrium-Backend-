@@ -27,4 +27,113 @@ model User {
   block Boolean @default(false)
   refreshToken String?
   createdAt DateTime @default(now())
+  collections Collection[]
+  items Item[]
+  tags Tag[]
+  likes Like[]
+  comments Comment[]
+}
+
+
+model Collection {
+  id String @id @default(uuid())
+  name String
+  description String
+  image String?
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items Item[]
+  custom_String1_state Boolean
+  custom_String2_state Boolean
+  custom_String3_state Boolean
+  custom_String1_name String?
+  custom_String2_name String?
+  custom_String3_name String?
+
+  custom_Int1_state Boolean
+  custom_Int2_state Boolean
+  custom_Int3_state Boolean
+  custom_Int1_name String?
+  custom_Int2_name String?
+  custom_Int3_name String?
+
+  custom_multi1_state Boolean
+  custom_multi2_state Boolean
+  custom_multi3_state Boolean
+  custom_multi1_name String?
+  custom_multi2_name String?
+  custom_multi3_name String?
+  createdAt DateTime @default(now())
+}
+
+
+model Item {
+  id String @id @default(uuid())
+  name String
+  tags ItemTag[]
+  likes Like[]
+  comments Comment[]
+  custom_String1_name String?
+  custom_String2_name String?
+  custom_String3_name String?
+  custom_Int1_name String?
+  custom_Int2_name String?
+  custom_Int3_name String?
+  custom_multi1_name String?
+  custom_multi2_name String?
+  custom_multi3_name String?
+  custom_String1_value String?
+  custom_String2_value String?
+  custom_String3_value String?
+  custom_Int1_value Int?
+  custom_Int2_value Int?
+  custom_Int3_value Int?
+  custom_multi1_value String?
+  custom_multi2_value String?
+  custom_multi3_value String?
+  collectionId String
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+}
+
+model Tag {
+  id String @id @default(uuid())
+  name String
+  items ItemTag[]
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  }
+
+// Join table to represent the many-to-many relationship
+model ItemTag {
+  itemId String
+  tagId  String
+  item   Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  tag    Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([itemId, tagId]) // Composite primary key
+}
+
+
+model Like {
+  id String @id @default(uuid())
+  itemId String
+  item   Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Comment {
+  id String @id @default(uuid())
+  content String
+  itemId String
+  item   Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }

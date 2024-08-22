@@ -1,4 +1,4 @@
-let whitelist = [];
+let whitelist = ["https://collectrium-frontend.onrender.com"];
 
 let corsOptions = {
   origin: function (origin, callback) {
